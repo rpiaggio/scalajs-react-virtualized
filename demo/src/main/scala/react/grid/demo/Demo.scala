@@ -1,9 +1,8 @@
-package react.virutalized.demo
+package react.grid.demo
 
 import scala.scalajs.js
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
-import org.scalajs.dom.document
 import react.virtualized._
 import Data.DataRow
 
@@ -148,9 +147,9 @@ object Demo {
       )
     }.build
 
-  def main(args: Array[String]): Unit = {
-
-    component().renderIntoDOM(document.getElementById("root"))
-    ()
-  }
+//  def main(args: Array[String]): Unit = {
+//
+//    component().renderIntoDOM(document.getElementById("root"))
+//    ()
+//  }
 }

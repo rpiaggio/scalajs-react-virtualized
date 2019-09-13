@@ -1,4 +1,4 @@
-package react.virutalized.demo
+package react.grid.demo
 
 import scala.util.Random._
 import scala.scalajs.js
