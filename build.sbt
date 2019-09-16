@@ -70,6 +70,10 @@ lazy val facade =
         "ag-grid-community" -> agGrid,
         "ag-grid-react"     -> agGrid
       ),
+      npmDevDependencies in Compile ++= Seq(
+        "css-loader"                         -> "1.0.0",
+        "style-loader"                       -> "0.23.0"
+      ),
       // Requires the DOM for tests
       requireJsDomEnv in Test          := true,
       // Use yarn as it is faster than npm

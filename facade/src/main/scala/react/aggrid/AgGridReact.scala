@@ -55,7 +55,7 @@ object AgGridReact {
     var columnDefs: js.UndefOr[js.Array[ColDef]] = js.native
     var defaultColDef: js.UndefOr[Col]           = js.native
     var defaultColGroupDef: js.UndefOr[ColGroup] = js.native
-    var rowData: js.UndefOr[js.Object]           = js.native
+    var rowData: js.UndefOr[js.Array[js.Object]] = js.native
   }
   // </Props>
 
@@ -63,13 +63,13 @@ object AgGridReact {
     columnDefs:         js.UndefOr[js.Array[ColDef]] = js.undefined,
     defaultColDef:      js.UndefOr[Col]              = js.undefined,
     defaultColGroupDef: js.UndefOr[ColGroup]         = js.undefined,
-    rowData:            js.UndefOr[js.Object]        = js.undefined
+    rowData:            js.UndefOr[js.Array[C]]      = js.undefined
   ): Props = {
     val p = (new js.Object).asInstanceOf[Props]
-    p.columnDefs = columnDefs
-    p.defaultColDef = defaultColDef
+    p.columnDefs         = columnDefs
+    p.defaultColDef      = defaultColDef
     p.defaultColGroupDef = defaultColGroupDef
-    p.rowData = rowData
+    p.rowData            = rowData.asInstanceOf[js.UndefOr[js.Array[js.Object]]] //.map(x => x.map(identity))
     p
   }
 

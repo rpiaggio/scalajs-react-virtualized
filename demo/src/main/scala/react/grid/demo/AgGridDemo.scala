@@ -6,6 +6,7 @@ import org.scalajs.dom.document
 import react.virtualized.AgGridReact
 
 import scala.scalajs.js
+import scala.scalajs.js.UndefOr
 
 object AgGridStaticDemo {
 
@@ -27,13 +28,22 @@ object AgGridStaticDemo {
     }
   )
 
+  private class Row(val make: String, val model: String, val price: Int) extends js.Object
+
+  private val rowData = js.Array[Row](
+    new Row("Toyota", "Celica", 35000),
+    new Row("Ford", "Mondeo", 32000),
+    new Row("Porsche", "Boxter", 72000)
+  )
+
   val component = ScalaComponent
     .builder[Props]("AgGridStaticDemo")
     .initialState(State( /*SortDirection.ASC, Data.generateRandomList*/ ))
     .renderPS { ($, props, state) =>
       AgGridReact(
         AgGridReact.props(
-          columnDefs = colDefs
+          columnDefs = colDefs,
+          rowData = UndefOr.any2undefOrA(rowData)
         )
       )
     }
@@ -47,7 +57,7 @@ object AgGridDemo {
     .builder[Unit]("Demo")
     .stateless
     .render_P { _ =>
-      <.div(
+      <.div(^.cls := "ag-theme-balham", ^.height := "200px", ^.width := "600px")(
         AgGridStaticDemo(AgGridStaticDemo.Props( /*true, "index", s*/ )).vdomElement
       )
     }
