@@ -3,37 +3,51 @@ package react.grid.demo
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.document
-import react.virtualized.AgGridReact
+import react.aggrid.AgGridReact
 
 import scala.scalajs.js
-import scala.scalajs.js.UndefOr
+import scala.scalajs.js.annotation.JSExportTopLevel
 
 object AgGridStaticDemo {
 
   final case class Props( /*useDynamicRowHeight: Boolean, sortBy: String, s: Size*/ )
   final case class State( /*sortDirection: SortDirection, data: List[DataRow]*/ )
 
+  @JSExportTopLevel("ModelCellRenderer")
+  val ModelCellRenderer = ScalaComponent
+    .builder[AgGridReact.CellRendererParams[Row]]("ModelCellRenderer")
+    .render_P { p =>
+//      println(s"RENDERING CELL! ${JSON.stringify(p.data)}")
+    println(p.data)
+
+      <.b(p.data.model)
+    }
+    .build
+
   private val colDefs = js.Array[AgGridReact.ColDef](
-    new AgGridReact.Col {
+    new AgGridReact.SingleColDef[Row] {
       override val headerName = "Make"
       override val field      = "make"
     },
-    new AgGridReact.Col {
-      override val headerName = "Model"
-      override val field      = "model"
+    new AgGridReact.SingleColDef[Row] {
+      override val headerName            = "Model"
+      override val field                 = "model"
+      override val cellRendererFramework = ModelCellRenderer.toJsComponent.raw
     },
-    new AgGridReact.Col {
+    new AgGridReact.SingleColDef[Row] {
       override val headerName = "Price"
       override val field      = "price"
     }
   )
 
-  private class Row(val make: String, val model: String, val price: Int) extends js.Object
+//  private class Row(val make: String, val model: String, val price: Int) extends js.Object
+
+  case class Row(make: String, model: String, price: Int)
 
   private val rowData = js.Array[Row](
-    new Row("Toyota", "Celica", 35000),
-    new Row("Ford", "Mondeo", 32000),
-    new Row("Porsche", "Boxter", 72000)
+    Row("Toyota", "Celica", 35000),
+    Row("Ford", "Mondeo", 32000),
+    Row("Porsche", "Boxter", 72000)
   )
 
   val component = ScalaComponent
@@ -43,7 +57,8 @@ object AgGridStaticDemo {
       AgGridReact(
         AgGridReact.props(
           columnDefs = colDefs,
-          rowData = UndefOr.any2undefOrA(rowData)
+//          rowModelType = AgGridReact.RowModel.Infinite,
+          rowData = rowData
         )
       )
     }
