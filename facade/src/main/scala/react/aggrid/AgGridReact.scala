@@ -9,6 +9,7 @@ import org.scalajs.dom
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
+import scala.scalajs.js.annotation.JSName
 
 object AgGridReact {
 
@@ -65,9 +66,9 @@ object AgGridReact {
     def failCallback(): Unit
   }
 
-  trait DataSource[T] extends js.Object {
+  abstract class DataSource[T] extends js.Object {
     def getRows(params: GetRowsParams[T]): Unit
-    def destroy(): Unit
+    def destroy(): Unit = {}
   }
 
   // <RowNode>
@@ -111,8 +112,51 @@ object AgGridReact {
   trait ColumnApi extends js.Object {}
   // </ColumnAPI>
 
+  // <Column>
+  // https://www.ag-grid.com/javascript-grid-column/
   @js.native
-  trait Column extends js.Object {}
+  trait Column extends js.Object {
+
+  }
+  // </Column>
+
+  // <Events>
+  @js.native
+  trait AgEvent extends js.Object {
+    @JSName("type")
+    val tpe: String = js.native
+  }
+
+  @js.native
+  trait AgGridEvent extends AgEvent {
+    val api: GridApi         = js.native
+    val columnApi: ColumnApi = js.native
+  }
+
+  @js.native
+  trait GridReadyEvent extends AgGridEvent
+
+  @js.native
+  trait RowEvent[T] extends AgGridEvent {
+    val rowNode: RowNode[T]            = js.native
+    val data: T                        = js.native
+    val rowIndex: Int                  = js.native
+    val rowPinned: js.UndefOr[String]  = js.native
+    val context: js.UndefOr[js.Object] = js.native
+    val event: js.UndefOr[dom.Event]   = js.native
+  }
+
+  @js.native
+  trait CellEvent[T] extends RowEvent[T] {
+    val column: Column          = js.native
+    val colDef: SingleColDef[T] = js.native
+    val value: js.Any           = js.native
+  }
+
+  @js.native
+  trait CellClickedEvent[T] extends CellEvent[T]
+
+  // </Events>
 
   @js.native
   trait CellRendererParams[T] extends js.Object {
@@ -151,17 +195,23 @@ object AgGridReact {
     var rowData: js.UndefOr[js.Array[_]]      = js.native
     var datasource: js.UndefOr[DataSource[_]] = js.native
     var cacheBlockSize: js.UndefOr[Int]       = js.native
+
+    // Events
+    var onGridReady: js.UndefOr[js.Function1[GridReadyEvent, Unit]]        = js.native
+    var onCellClicked: js.UndefOr[js.Function1[CellClickedEvent[_], Unit]] = js.native
   }
   // </Props>
 
   def props[T /* <: js.Object*/ ]( // The row type has to <: js.Object if you want to use AgGrid's renderers, but we don't enforce it.
-                                  columnDefs:         js.UndefOr[js.Array[ColDef]] = js.undefined,
-                                  defaultColDef:      js.UndefOr[SingleColDef[T]]  = js.undefined,
-                                  defaultColGroupDef: js.UndefOr[ColGroupDef]      = js.undefined,
-                                  rowModelType:       js.UndefOr[RowModel]         = js.undefined,
-                                  rowData:            js.UndefOr[js.Array[T]]      = js.undefined,
-                                  datasource:         js.UndefOr[DataSource[T]]    = js.undefined,
-                                  cacheBlockSize:     js.UndefOr[Int]              = js.undefined): Props = {
+    columnDefs:         js.UndefOr[js.Array[ColDef]]                = js.undefined,
+    defaultColDef:      js.UndefOr[SingleColDef[T]]                 = js.undefined,
+    defaultColGroupDef: js.UndefOr[ColGroupDef]                     = js.undefined,
+    rowModelType:       js.UndefOr[RowModel]                        = js.undefined,
+    rowData:            js.UndefOr[js.Array[T]]                     = js.undefined,
+    datasource:         js.UndefOr[DataSource[T]]                   = js.undefined,
+    cacheBlockSize:     js.UndefOr[Int]                             = js.undefined,
+    onGridReady:        js.UndefOr[GridReadyEvent => Callback]      = js.undefined,
+    onCellClicked:      js.UndefOr[CellClickedEvent[T] => Callback] = js.undefined): Props = {
     val p = (new js.Object).asInstanceOf[Props]
     p.columnDefs         = columnDefs
     p.defaultColDef      = defaultColDef
@@ -170,13 +220,19 @@ object AgGridReact {
     p.rowData            = rowData
     p.datasource         = datasource
     p.cacheBlockSize     = cacheBlockSize
+    p.onGridReady = onGridReady.map(h => { e: GridReadyEvent =>
+      h(e).runNow()
+    })
+    p.onCellClicked = onCellClicked.map(h => { e: CellClickedEvent[_] =>
+      h(e.asInstanceOf[CellClickedEvent[T]]).runNow()
+    })
     p
   }
 
   val component = JsComponent[Props, Children.Varargs, Null](RawComponent)
     .addFacade[JsMethods]
 
-  def apply(p: Props /*, children: ColumnArg**/ )
+  def apply(p: Props)
     : UnmountedMapped[Id, Props, Null, RawMounted[Props, Null] with JsMethods, Props, Null] =
     component.apply(p)()
 }
