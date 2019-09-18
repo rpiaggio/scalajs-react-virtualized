@@ -2,7 +2,6 @@ package react
 package aggrid
 
 import japgolly.scalajs.react._
-import japgolly.scalajs.react.raw.JsNumber
 import japgolly.scalajs.react.component.Js.RawMounted
 import japgolly.scalajs.react.component.Js.UnmountedMapped
 import japgolly.scalajs.react.internal.Effect.Id
@@ -20,7 +19,7 @@ object AgGridReact {
   @js.native
   trait JsMethods extends js.Object {
     def forceUpdateGrid(): Unit = js.native
-    def getOffsetForRow(o: js.Object): JsNumber = js.native
+    def getOffsetForRow(o: js.Object): Int = js.native
     def measureAllRows(): Unit = js.native
     def recomputeRowHeights(index:  Int): Unit = js.native
     def scrollToPosition(scrollTop: Int): Unit = js.native
@@ -34,7 +33,7 @@ object AgGridReact {
   }
 
   trait SingleColDef[T] extends ColDef {
-    val field: String
+    val field: js.UndefOr[String] = js.undefined
     val cellRendererFramework: js.UndefOr[raw.React.ComponentType[CellRendererParams[T]]] =
       js.undefined
   }
@@ -58,17 +57,17 @@ object AgGridReact {
   }
 
   @js.native
-  trait GetRowsParams extends js.Object {
-    var startRow: JsNumber = js.native
-    var endRow: JsNumber   = js.native
+  trait GetRowsParams[T] extends js.Object {
+    var startRow: Int      = js.native
+    var endRow: Int        = js.native
     var context: js.Object = js.native
-    def successCallback(rowsThisBlock: js.Array[js.Object], lastRow: JsNumber): Unit
+    def successCallback(rowsThisBlock: js.Array[T], lastRow: js.UndefOr[Int] = js.undefined): Unit
     def failCallback(): Unit
   }
 
-  trait DataSource {
-    def getRows(params: GetRowsParams): Unit
-    def destroy(): Unit = {}
+  trait DataSource[T] extends js.Object {
+    def getRows(params: GetRowsParams[T]): Unit
+    def destroy(): Unit
   }
 
   // <RowNode>
@@ -78,18 +77,18 @@ object AgGridReact {
     val id: String                                   = js.native
     val data: T                                      = js.native
     val parent: js.UndefOr[RowNode[_]]               = js.native
-    val level: JsNumber                              = js.native
-    val uiLevel: JsNumber                            = js.native
+    val level: Int                                   = js.native
+    val uiLevel: Int                                 = js.native
     val group: Boolean                               = js.native
     val firstChild: Boolean                          = js.native
     val lastChild: Boolean                           = js.native
-    val childIndex: JsNumber                         = js.native
+    val childIndex: Int                              = js.native
     val rowPinned: js.UndefOr[String]                = js.native
     val canFlower: Boolean                           = js.native
     val childFlower: js.Any                          = js.native // ???
     val stub: Boolean                                = js.native // Enterprise
-    val rowHeight: JsNumber                          = js.native
-    val rowTop: JsNumber                             = js.native
+    val rowHeight: Int                               = js.native
+    val rowTop: Int                                  = js.native
     val quickFilterAggregateText: js.UndefOr[String] = js.native
   }
   // </RowNode>
@@ -102,7 +101,7 @@ object AgGridReact {
     def sizeColumnsToFit(): Unit = js.native
 
     // Scrolling
-    def ensureIndexVisible(index: JsNumber, position: String): Unit = js.native
+    def ensureIndexVisible(index: Int, position: String): Unit = js.native
   }
   // </GridAPI>
 
@@ -123,13 +122,12 @@ object AgGridReact {
       : Unit => js.Any           = js.native // convenience function to get most recent up to date value
     val setValue: js.Any => Unit = js.native // convenience to set the value
     val formatValue
-      : js.Any => js.Any        = js.native // convenience to format a value using the columns formatter
-    val data: T                 = js.native // the rows data
-    val node: RowNode[T]        = js.native // row rows row node
-    val colDef: SingleColDef[T] = js.native // the cells column definition
-    val column: Column          = js.native // the cells column
-    val rowIndex
-      : JsNumber                       = js.native // the current index of the row (changes after filter and sort)
+      : js.Any => js.Any               = js.native // convenience to format a value using the columns formatter
+    val data: js.UndefOr[T]            = js.native // the rows data
+    val node: RowNode[T]               = js.native // row rows row node
+    val colDef: SingleColDef[T]        = js.native // the cells column definition
+    val column: Column                 = js.native // the cells column
+    val rowIndex: Int                  = js.native // the current index of the row (changes after filter and sort)
     val api: GridApi                   = js.native // the grid API
     val eGridCell: dom.raw.HTMLElement = js.native // the grid's cell, a DOM div element
     val eParentOfValue
@@ -149,9 +147,10 @@ object AgGridReact {
     var defaultColGroupDef: js.UndefOr[ColGroupDef] = js.native
 
     // Data & Row Models
-    var rowModelType: js.UndefOr[String]   = js.native
-    var rowData: js.UndefOr[js.Array[_]]   = js.native
-    var datasource: js.UndefOr[DataSource] = js.native
+    var rowModelType: js.UndefOr[String]      = js.native
+    var rowData: js.UndefOr[js.Array[_]]      = js.native
+    var datasource: js.UndefOr[DataSource[_]] = js.native
+    var cacheBlockSize: js.UndefOr[Int]       = js.native
   }
   // </Props>
 
@@ -161,7 +160,8 @@ object AgGridReact {
                                   defaultColGroupDef: js.UndefOr[ColGroupDef]      = js.undefined,
                                   rowModelType:       js.UndefOr[RowModel]         = js.undefined,
                                   rowData:            js.UndefOr[js.Array[T]]      = js.undefined,
-                                  datasource:         js.UndefOr[DataSource]       = js.undefined): Props = {
+                                  datasource:         js.UndefOr[DataSource[T]]    = js.undefined,
+                                  cacheBlockSize:     js.UndefOr[Int]              = js.undefined): Props = {
     val p = (new js.Object).asInstanceOf[Props]
     p.columnDefs         = columnDefs
     p.defaultColDef      = defaultColDef
@@ -169,6 +169,7 @@ object AgGridReact {
     p.rowModelType       = rowModelType.map(_.name)
     p.rowData            = rowData
     p.datasource         = datasource
+    p.cacheBlockSize     = cacheBlockSize
     p
   }
 
