@@ -10,6 +10,7 @@ import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSImport
 import scala.scalajs.js.annotation.JSName
+import scala.scalajs.js.|
 
 object AgGridReact {
 
@@ -79,6 +80,12 @@ object AgGridReact {
     def failCallback(): Unit
   }
 
+  // https://www.ag-grid.com/javascript-grid-refresh/#refresh-cells
+  class RefreshCellsParams[T](val rowNodes: js.UndefOr[js.Array[RowNode[T]]]      = js.undefined,
+                              val columns:  js.UndefOr[js.Array[String | Column]] = js.undefined,
+                              val force:    js.UndefOr[Boolean]                   = js.undefined)
+      extends js.Object
+
   abstract class DataSource[T] extends js.Object {
     def getRows(params: GetRowsParams[T]): Unit
     def destroy(): Unit = {}
@@ -116,6 +123,9 @@ object AgGridReact {
   trait GridApi extends js.Object {
     // Columns
     def sizeColumnsToFit(): Unit = js.native
+
+    // Selection
+    def refreshCells[T](params: RefreshCellsParams[T]): Unit = js.native
 
     // Scrolling
     def ensureIndexVisible(index: Int, position: String): Unit = js.native

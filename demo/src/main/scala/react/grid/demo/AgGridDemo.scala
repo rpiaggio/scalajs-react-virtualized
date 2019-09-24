@@ -43,12 +43,14 @@ object AgGridStaticDemo {
   }
 
   final case class Props( /*useDynamicRowHeight: Boolean, sortBy: String, s: Size*/ )
-  final case class State(selectedRowIdx:    Option[Int]    = None,
-                         selectedRowNodeId: Option[String] = None)
+  final case class State(selectedRowIdx: Option[Int] = None /*,
+                         selectedRowNodeId: Option[String] = None*/ )
 
   class Backend($ : BackendScope[Props, State]) {
 
     private var api: Option[AgGridReact.GridApi] = None
+
+    private var selectedRowNodeId: Option[String] = None
 
     def boldRenderer(f: Row => VdomNode) =
       ScalaComponent
@@ -80,6 +82,21 @@ object AgGridStaticDemo {
         .toJsComponent
         .raw
 
+    def conditionalRenderer(f: Row => VdomNode) = {
+      val normalRenderer   = boldRenderer(f)
+      val selectedRenderer = fancyRenderer(f)
+      ScalaComponent
+        .builder[AgGridReact.CellRendererParams[Row]]("ModelCellRenderer")
+        .render_P { p =>
+          println(s"Rendering Node [${p.node.id}]")
+
+          selectedRowNodeId.filter(_ == p.node.id).fold(normalRenderer(p))(_ => selectedRenderer(p))
+        }
+        .build
+        .toJsComponent
+        .raw
+    }
+
     private val colDefs = js.Array[AgGridReact.ColDef](
       new AgGridReact.SingleColDef[Row] {
         override val headerName            = "idx"
@@ -93,7 +110,7 @@ object AgGridStaticDemo {
       },
       new AgGridReact.SingleColDef[Row] {
         override val headerName            = "Model"
-        override val cellRendererFramework = fancyRenderer(_._1.model)
+        override val cellRendererFramework = conditionalRenderer(_._1.model)
       },
       new AgGridReact.SingleColDef[Row] {
         override val headerName            = "Price"
@@ -107,15 +124,18 @@ object AgGridStaticDemo {
     }
 
     private def onCellClicked(e: AgGridReact.CellClickedEvent[Row]) =
-      $.setState(State(e.rowIndex.some, e.node.id.some)) >>
-        Callback(e.api.resetRowHeights())
+      $.setState(State(e.rowIndex.some)) >>
+        Callback(selectedRowNodeId = e.node.id.some) >>
+        Callback(e.api.resetRowHeights()) >>
+        Callback(e.api.refreshCells(new AgGridReact.RefreshCellsParams(force = true))) >>
+        Callback(e.api.ensureIndexVisible(e.rowIndex, ""))
     //Callback(e.node.setRowHeight(80)) >>
     //Callback(e.api.onRowHeightChanged())
 
     private def getRowHeight(p: AgGridReact.GetRowHeightParams[Row]): CallbackTo[Int] =
       $.state >>= { s =>
         CallbackTo {
-          s.selectedRowNodeId.filter(_ == p.node.id).fold(40)(_ => 80)
+          selectedRowNodeId.filter(_ == p.node.id).fold(40)(_ => 80)
         }
       }
 
@@ -181,7 +201,7 @@ object AgGridStaticDemo {
         ),
         <.button(^.tpe := "button", ^.onClick --> scrollToRow(75), "Go to row 75"),
         s.selectedRowIdx.whenDefined(row => s"SELECTED ROW IDX: $row  "),
-        s.selectedRowNodeId.whenDefined(id => s"SELECTED ROW NODE ID: $id  ")
+        selectedRowNodeId.whenDefined(id => s"SELECTED ROW NODE ID: $id  ")
       )
 
   }
