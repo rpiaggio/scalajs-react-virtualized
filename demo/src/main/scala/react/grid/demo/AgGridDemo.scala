@@ -5,6 +5,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.document
 import react.aggrid.AgGridReact
 import cats.syntax.option._
+import react.aggrid.AgGridReact.RowNode
 import seqexec.web.client.semanticui.Size
 import seqexec.web.client.semanticui.elements.button.Button
 import seqexec.web.client.semanticui.elements.icon.Icon
@@ -50,7 +51,7 @@ object AgGridStaticDemo {
 
     private var api: Option[AgGridReact.GridApi] = None
 
-    private var selectedRowNodeId: Option[String] = None
+    private var selectedRowNode: Option[RowNode[Row]] = None
 
     def boldRenderer(f: Row => VdomNode) =
       ScalaComponent
@@ -90,7 +91,7 @@ object AgGridStaticDemo {
         .render_P { p =>
           println(s"Rendering Node [${p.node.id}]")
 
-          selectedRowNodeId.filter(_ == p.node.id).fold(normalRenderer(p))(_ => selectedRenderer(p))
+          selectedRowNode.filter(_ == p.node).fold(normalRenderer(p))(_ => selectedRenderer(p))
         }
         .build
         .toJsComponent
@@ -123,21 +124,28 @@ object AgGridStaticDemo {
       api = e.api.some
     }
 
-    private def onCellClicked(e: AgGridReact.CellClickedEvent[Row]) =
+    private def onCellClicked(e: AgGridReact.CellClickedEvent[Row]) = {
+      val oldRowNode = selectedRowNode
+
       $.setState(State(e.rowIndex.some)) >>
-        Callback(selectedRowNodeId = e.node.id.some) >>
+        Callback(selectedRowNode = e.node.some) >>
+        Callback(
+          e.api.refreshCells(
+            new AgGridReact.RefreshCellsParams(
+              rowNodes = List(oldRowNode, selectedRowNode).flatten.toJSArray,
+              force    = true))) >>
         Callback(e.api.resetRowHeights()) >>
-        Callback(e.api.refreshCells(new AgGridReact.RefreshCellsParams(force = true))) >>
         Callback(e.api.ensureIndexVisible(e.rowIndex, ""))
+    }
     //Callback(e.node.setRowHeight(80)) >>
     //Callback(e.api.onRowHeightChanged())
 
     private def getRowHeight(p: AgGridReact.GetRowHeightParams[Row]): CallbackTo[Int] =
-      $.state >>= { s =>
-        CallbackTo {
-          selectedRowNodeId.filter(_ == p.node.id).fold(40)(_ => 80)
-        }
+//      $.state >>= { s =>
+      CallbackTo {
+        selectedRowNode.filter(_ == p.node).fold(40)(_ => 80)
       }
+//      }
 
     /*private def onRowDragMove(e: AgGridReact.RowDragMoveEvent[Row]) =
       Callback {
@@ -201,7 +209,7 @@ object AgGridStaticDemo {
         ),
         <.button(^.tpe := "button", ^.onClick --> scrollToRow(75), "Go to row 75"),
         s.selectedRowIdx.whenDefined(row => s"SELECTED ROW IDX: $row  "),
-        selectedRowNodeId.whenDefined(id => s"SELECTED ROW NODE ID: $id  ")
+        selectedRowNode.whenDefined(id => s"SELECTED ROW NODE ID: $id  ")
       )
 
   }
