@@ -3,6 +3,10 @@ val reactVirtualized = "9.21.1"
 val agGrid = "21.2.1"
 val scalaJsReact = "1.4.2"
 
+val jQuery                  = "3.2.1"
+val semanticUI              = "2.3.1"
+
+
 parallelExecution in (ThisBuild, Test) := false
 
 addCommandAlias("restartWDS", "; demo/fastOptJS::stopWebpackDevServer; demo/fastOptJS::startWebpackDevServer")
@@ -36,7 +40,6 @@ val root =
       publishArtifact      := false,
       Keys.`package`       := file(""))
 
-
 lazy val demo =
   project.in(file("demo"))
     .enablePlugins(ScalaJSBundlerPlugin)
@@ -49,6 +52,25 @@ lazy val demo =
       version in webpack               := "4.30.0",
       version in webpackCliVersion     := "3.3.2",
       version in startWebpackDevServer := "3.3.1",
+      libraryDependencies    ++= Seq(
+        "com.github.japgolly.scalajs-react" %%% "ext-cats"         % scalaJsReact,
+        "org.querki"              %%% "jquery-facade"      % "1.2",
+        "org.querki" %%% "querki-jsext" % "0.8"
+      ),
+      npmDependencies in Compile      ++= Seq(
+        "jquery"                  -> jQuery,
+//        "semantic-ui"             -> semanticUI,
+        "semantic-ui-dropdown"    -> semanticUI,
+        "semantic-ui-modal"       -> semanticUI,
+        "semantic-ui-progress"    -> semanticUI,
+        "semantic-ui-popup"       -> semanticUI,
+        "semantic-ui-tab"         -> semanticUI,
+        "semantic-ui-visibility"  -> semanticUI,
+        "semantic-ui-transition"  -> semanticUI,
+        "semantic-ui-dimmer"      -> semanticUI,
+        "semantic-ui-less"        -> semanticUI
+
+      ),
       // don't publish the demo
       publish                          := {},
       publishLocal                     := {},
