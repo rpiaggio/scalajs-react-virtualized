@@ -43,7 +43,8 @@ object AgGridStaticDemo {
   }
 
   final case class Props( /*useDynamicRowHeight: Boolean, sortBy: String, s: Size*/ )
-  final case class State(selectedRow: Option[Int] = None)
+  final case class State(selectedRowIdx:    Option[Int]    = None,
+                         selectedRowNodeId: Option[String] = None)
 
   class Backend($ : BackendScope[Props, State]) {
 
@@ -106,7 +107,17 @@ object AgGridStaticDemo {
     }
 
     private def onCellClicked(e: AgGridReact.CellClickedEvent[Row]) =
-      $.setState(State(e.rowIndex.some))
+      $.setState(State(e.rowIndex.some, e.node.id.some)) >>
+        Callback(e.api.resetRowHeights())
+    //Callback(e.node.setRowHeight(80)) >>
+    //Callback(e.api.onRowHeightChanged())
+
+    private def getRowHeight(p: AgGridReact.GetRowHeightParams[Row]): CallbackTo[Int] =
+      $.state >>= { s =>
+        CallbackTo {
+          s.selectedRowNodeId.filter(_ == p.node.id).fold(40)(_ => 80)
+        }
+      }
 
     /*private def onRowDragMove(e: AgGridReact.RowDragMoveEvent[Row]) =
       Callback {
@@ -143,13 +154,19 @@ object AgGridStaticDemo {
 
     val staticProps =
       AgGridReact.props(
-        columnDefs     = colDefs,
-        rowModelType   = AgGridReact.RowModel.ClientSide,
-        rowData        = data.toJSArray,
+        defaultColDef = new AgGridReact.SingleColDef[Row] {
+          override val resizable = true
+        },
+        columnDefs = colDefs,
+//        rowHeight    = 40,
+        rowModelType = AgGridReact.RowModel.ClientSide,
+        rowData      = data.toJSArray,
+//        rowSelection   = AgGridReact.RowSelection.Single,
         rowDragManaged = true,
         animateRows    = true,
         onGridReady    = onGridReady _,
-        onCellClicked  = onCellClicked _ //,
+        onCellClicked  = onCellClicked _,
+        getRowHeight   = getRowHeight _
 //        onRowDragMove = onRowDragMove _
 //        onRowDragEnd = onRowDragEnd _
       )
@@ -163,7 +180,8 @@ object AgGridStaticDemo {
           )
         ),
         <.button(^.tpe := "button", ^.onClick --> scrollToRow(75), "Go to row 75"),
-        s.selectedRow.whenDefined(row => s"SELECTED ROW: $row")
+        s.selectedRowIdx.whenDefined(row => s"SELECTED ROW IDX: $row  "),
+        s.selectedRowNodeId.whenDefined(id => s"SELECTED ROW NODE ID: $id  ")
       )
 
   }

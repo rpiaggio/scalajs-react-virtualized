@@ -37,10 +37,11 @@ object AgGridReact {
     val field: js.UndefOr[String] = js.undefined
     val cellRendererFramework: js.UndefOr[raw.React.ComponentType[CellRendererParams[T]]] =
       js.undefined
-    val width: js.UndefOr[Int]       = js.undefined
-    val minWidth: js.UndefOr[Int]    = js.undefined
-    val maxWidth: js.UndefOr[Int]    = js.undefined
-    val rowDrag: js.UndefOr[Boolean] = js.undefined
+    val width: js.UndefOr[Int]         = js.undefined
+    val minWidth: js.UndefOr[Int]      = js.undefined
+    val maxWidth: js.UndefOr[Int]      = js.undefined
+    val resizable: js.UndefOr[Boolean] = js.undefined
+    val rowDrag: js.UndefOr[Boolean]   = js.undefined
   }
 
   trait ColGroupDef extends ColDef {
@@ -48,17 +49,25 @@ object AgGridReact {
   }
   // </ColDef>
 
-  sealed trait RowModel {
+  sealed trait Enum {
     val name: String = {
       val (h, t) = toString.splitAt(1)
       h.toLowerCase + t
     }
   }
+
+  sealed trait RowModel extends Enum
   object RowModel {
     case object ClientSide extends RowModel
     case object Infinite extends RowModel
     case object ServerSide extends RowModel // Enterprise
     case object Viewport extends RowModel // Enterprise
+  }
+
+  sealed trait RowSelection extends Enum
+  object RowSelection {
+    case object Single extends RowSelection
+    case object Multiple extends RowSelection
   }
 
   @js.native
@@ -96,7 +105,8 @@ object AgGridReact {
     val rowTop: Int                                  = js.native
     val quickFilterAggregateText: js.UndefOr[String] = js.native
 
-    def setData(newData: T): Unit = js.native
+    def setRowHeight(height: Int): Unit = js.native
+    def setData(newData:     T): Unit   = js.native
   }
   // </RowNode>
 
@@ -109,6 +119,10 @@ object AgGridReact {
 
     // Scrolling
     def ensureIndexVisible(index: Int, position: String): Unit = js.native
+
+    // Miscellaneous
+    def resetRowHeights(): Unit    = js.native
+    def onRowHeightChanged(): Unit = js.native
   }
   // </GridAPI>
 
@@ -123,6 +137,15 @@ object AgGridReact {
   @js.native
   trait Column extends js.Object {}
   // </Column>
+
+  // https://www.ag-grid.com/javascript-grid-row-height/#getrowheight-callback
+  @js.native
+  trait GetRowHeightParams[T] extends js.Object {
+    val node: RowNode[T]               = js.native
+    val data: T                        = js.native
+    val api: GridApi                   = js.native
+    val context: js.UndefOr[js.Object] = js.native
+  }
 
   // <Events>
   @js.native
@@ -142,7 +165,7 @@ object AgGridReact {
 
   @js.native
   trait RowEvent[T] extends AgGridEvent {
-    val rowNode: RowNode[T]            = js.native
+    val node: RowNode[T]               = js.native
     val data: T                        = js.native
     val rowIndex: Int                  = js.native
     val rowPinned: js.UndefOr[String]  = js.native
@@ -215,6 +238,9 @@ object AgGridReact {
     var defaultColDef: js.UndefOr[SingleColDef[_]]  = js.native
     var defaultColGroupDef: js.UndefOr[ColGroupDef] = js.native
 
+    // Selection
+    var rowSelection: js.UndefOr[String] = js.native
+
     // Row Dragging
     var rowDragManaged: js.UndefOr[Boolean] = js.native
 
@@ -225,6 +251,7 @@ object AgGridReact {
     var cacheBlockSize: js.UndefOr[Int]       = js.native
 
     // Rendering & Styling
+    var rowHeight: js.UndefOr[Int]       = js.native
     var animateRows: js.UndefOr[Boolean] = js.native
 
     // Events
@@ -234,47 +261,60 @@ object AgGridReact {
     var onRowDragMove: js.UndefOr[js.Function1[RowDragMoveEvent[_], Unit]]   = js.native
     var onRowDragEnd: js.UndefOr[js.Function1[RowDragEndEvent[_], Unit]]     = js.native
     var onRowDragLeave: js.UndefOr[js.Function1[RowDragLeaveEvent[_], Unit]] = js.native
+
+    // Callbacks
+    var getRowHeight: js.UndefOr[js.Function1[GetRowHeightParams[_], Int]] = js.native
   }
   // </Props>
 
-  private def onEvent[E <: AgEvent, E1 <: AgEvent](
-    h: js.UndefOr[E => Callback]): js.UndefOr[js.Function1[E1, Unit]] =
+  private def jsFun[E, E1, R](h: js.UndefOr[E => CallbackTo[R]]): js.UndefOr[js.Function1[E1, R]] =
     h.map(someH => { e: E1 =>
       someH(e.asInstanceOf[E]).runNow()
     })
 
+  private def jsEvent[E <: AgEvent, E1 <: AgEvent](
+    h: js.UndefOr[E => Callback]): js.UndefOr[js.Function1[E1, Unit]] =
+    jsFun[E, E1, Unit](h)
+
   def props[T /* <: js.Object*/ ]( // The row type has to <: js.Object if you want to use AgGrid's renderers, but we don't enforce it.
-    columnDefs:         js.UndefOr[js.Array[ColDef]]                 = js.undefined,
-    defaultColDef:      js.UndefOr[SingleColDef[T]]                  = js.undefined,
-    defaultColGroupDef: js.UndefOr[ColGroupDef]                      = js.undefined,
-    rowDragManaged:     js.UndefOr[Boolean]                          = js.undefined,
-    rowModelType:       js.UndefOr[RowModel]                         = js.undefined,
-    rowData:            js.UndefOr[js.Array[T]]                      = js.undefined,
-    datasource:         js.UndefOr[DataSource[T]]                    = js.undefined,
-    cacheBlockSize:     js.UndefOr[Int]                              = js.undefined,
-    animateRows:        js.UndefOr[Boolean]                          = js.undefined,
-    onGridReady:        js.UndefOr[GridReadyEvent => Callback]       = js.undefined,
-    onCellClicked:      js.UndefOr[CellClickedEvent[T] => Callback]  = js.undefined,
-    onRowDragEnter:     js.UndefOr[RowDragEnterEvent[T] => Callback] = js.undefined,
-    onRowDragMove:      js.UndefOr[RowDragMoveEvent[T] => Callback]  = js.undefined,
-    onRowDragEnd:       js.UndefOr[RowDragEndEvent[T] => Callback]   = js.undefined,
-    onRowDragLeave:     js.UndefOr[RowDragLeaveEvent[T] => Callback] = js.undefined): Props = {
+    columnDefs:         js.UndefOr[js.Array[ColDef]]                         = js.undefined,
+    defaultColDef:      js.UndefOr[SingleColDef[T]]                          = js.undefined,
+    defaultColGroupDef: js.UndefOr[ColGroupDef]                              = js.undefined,
+    rowSelection:       js.UndefOr[RowSelection]                             = js.undefined,
+    rowDragManaged:     js.UndefOr[Boolean]                                  = js.undefined,
+    rowModelType:       js.UndefOr[RowModel]                                 = js.undefined,
+    rowData:            js.UndefOr[js.Array[T]]                              = js.undefined,
+    datasource:         js.UndefOr[DataSource[T]]                            = js.undefined,
+    cacheBlockSize:     js.UndefOr[Int]                                      = js.undefined,
+    rowHeight:          js.UndefOr[Int]                                      = js.undefined,
+    animateRows:        js.UndefOr[Boolean]                                  = js.undefined,
+    onGridReady:        js.UndefOr[GridReadyEvent => Callback]               = js.undefined,
+    onCellClicked:      js.UndefOr[CellClickedEvent[T] => Callback]          = js.undefined,
+    onRowDragEnter:     js.UndefOr[RowDragEnterEvent[T] => Callback]         = js.undefined,
+    onRowDragMove:      js.UndefOr[RowDragMoveEvent[T] => Callback]          = js.undefined,
+    onRowDragEnd:       js.UndefOr[RowDragEndEvent[T] => Callback]           = js.undefined,
+    onRowDragLeave:     js.UndefOr[RowDragLeaveEvent[T] => Callback]         = js.undefined,
+    getRowHeight:       js.UndefOr[GetRowHeightParams[T] => CallbackTo[Int]] = js.undefined,
+  ): Props = {
     val p = (new js.Object).asInstanceOf[Props]
     p.columnDefs         = columnDefs
     p.defaultColDef      = defaultColDef
     p.defaultColGroupDef = defaultColGroupDef
+    p.rowSelection       = rowSelection.map(_.name)
     p.rowDragManaged     = rowDragManaged
     p.rowModelType       = rowModelType.map(_.name)
     p.rowData            = rowData
     p.datasource         = datasource
     p.cacheBlockSize     = cacheBlockSize
+    p.rowHeight          = rowHeight
     p.animateRows        = animateRows
-    p.onGridReady        = onEvent[GridReadyEvent, GridReadyEvent](onGridReady)
-    p.onCellClicked      = onEvent[CellClickedEvent[T], CellClickedEvent[_]](onCellClicked)
-    p.onRowDragEnter     = onEvent[RowDragEnterEvent[T], RowDragEnterEvent[_]](onRowDragEnter)
-    p.onRowDragMove      = onEvent[RowDragMoveEvent[T], RowDragMoveEvent[_]](onRowDragMove)
-    p.onRowDragEnd       = onEvent[RowDragEndEvent[T], RowDragEndEvent[_]](onRowDragEnd)
-    p.onRowDragLeave     = onEvent[RowDragLeaveEvent[T], RowDragLeaveEvent[_]](onRowDragLeave)
+    p.onGridReady        = jsEvent[GridReadyEvent, GridReadyEvent](onGridReady)
+    p.onCellClicked      = jsEvent[CellClickedEvent[T], CellClickedEvent[_]](onCellClicked)
+    p.onRowDragEnter     = jsEvent[RowDragEnterEvent[T], RowDragEnterEvent[_]](onRowDragEnter)
+    p.onRowDragMove      = jsEvent[RowDragMoveEvent[T], RowDragMoveEvent[_]](onRowDragMove)
+    p.onRowDragEnd       = jsEvent[RowDragEndEvent[T], RowDragEndEvent[_]](onRowDragEnd)
+    p.onRowDragLeave     = jsEvent[RowDragLeaveEvent[T], RowDragLeaveEvent[_]](onRowDragLeave)
+    p.getRowHeight       = jsFun[GetRowHeightParams[T], GetRowHeightParams[_], Int](getRowHeight)
     p
   }
 
