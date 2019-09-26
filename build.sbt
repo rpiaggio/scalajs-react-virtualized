@@ -86,11 +86,12 @@ lazy val facade =
     .settings(
       name                             := "react-virtualized",
       npmDependencies in Compile      ++= Seq(
-        "react"             -> reactJS,
-        "react-dom"         -> reactJS,
-        "react-virtualized" -> reactVirtualized,
-        "ag-grid-community" -> agGrid,
-        "ag-grid-react"     -> agGrid
+        "react"               -> reactJS,
+        "react-dom"           -> reactJS,
+        "react-virtualized"   -> reactVirtualized,
+        "ag-grid-community"   -> agGrid,
+        "ag-grid-enterprise"  -> agGrid,
+        "ag-grid-react"       -> agGrid
       ),
       npmDevDependencies in Compile ++= Seq(
         "css-loader"                         -> "1.0.0",
@@ -173,6 +174,7 @@ lazy val commonSettings = Seq(
       // "-Ywarn-unused:patvars",             // Warn if a variable bound in a pattern is unused.
       "-Ywarn-unused:privates",            // Warn if a private member is unused.
       "-Ywarn-value-discard",              // Warn when non-Unit expression results are unused.
+//      "-Ywarn-dead-code",
       "-P:scalajs:sjsDefinedByDefault",
       "-Yrangepos"
     ),

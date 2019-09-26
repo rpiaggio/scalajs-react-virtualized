@@ -5,7 +5,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.document
 import react.aggrid.AgGridReact
 import cats.syntax.option._
-import react.aggrid.AgGridReact.RowNode
+import react.aggrid.AgGridReact.{DetailCellRendererParams, RowNode}
 import seqexec.web.client.semanticui.Size
 import seqexec.web.client.semanticui.elements.button.Button
 import seqexec.web.client.semanticui.elements.icon.Icon
@@ -30,16 +30,21 @@ object AgGridStaticDemo {
 
   private val blockSize = 30
 
+  private def getRowBlock(params: AgGridReact.GetRowsParams[Row]) = Callback {
+    println(s"LOADING [${params.startRow}] TO [${params.endRow}]")
+    js.timers.setTimeout(500)(
+      params.successCallback(
+        data.slice(params.startRow, params.endRow).toJSArray,
+        Some(data.length).filter(_ - params.endRow < blockSize).orUndefined
+      )
+    )
+    ()
+  }
+
+
   private val datasource = new AgGridReact.DataSource[Row] {
     override def getRows(params: AgGridReact.GetRowsParams[Row]) = {
-      println(s"LOADING [${params.startRow}] TO [${params.endRow}]")
-      js.timers.setTimeout(500)(
-        params.successCallback(
-          data.slice(params.startRow, params.endRow).toJSArray,
-          Some(data.length).filter(_ - params.endRow < blockSize).orUndefined
-        )
-      )
-      ()
+      getRowBlock(params).runNow()
     }
   }
 
@@ -89,8 +94,6 @@ object AgGridStaticDemo {
       ScalaComponent
         .builder[AgGridReact.CellRendererParams[Row]]("ModelCellRenderer")
         .render_P { p =>
-          println(s"Rendering Node [${p.node.id}]")
-
           selectedRowNode.filter(_ == p.node).fold(normalRenderer(p))(_ => selectedRenderer(p))
         }
         .build
@@ -155,13 +158,13 @@ object AgGridStaticDemo {
         e.overNode.setData(draggedData)
       }*/
 
-    private def onRowDragEnd(e: AgGridReact.RowDragEndEvent[Row]) =
+    /*private def onRowDragEnd(e: AgGridReact.RowDragEndEvent[Row]) =
       Callback {
         println(s"Exchange: ${e.node.data._2} with ${e.overNode.data._2}")
         val draggedData = e.node.data
         e.node.setData(e.overNode.data)
         e.overNode.setData(draggedData)
-      }
+      }*/
 
     def scrollToRow(i: Int) = Callback {
       api.foreach(_.ensureIndexVisible(i, ""))
@@ -175,9 +178,9 @@ object AgGridStaticDemo {
         cacheBlockSize = blockSize,
         animateRows    = true,
         onGridReady    = onGridReady _,
-        onCellClicked  = onCellClicked _,
+        onCellClicked  = onCellClicked _
         //              onRowDragMove  = onRowDragMove _
-        onRowDragEnd = onRowDragEnd _
+//        onRowDragEnd = onRowDragEnd _
       )
 
     val staticProps =
@@ -194,7 +197,12 @@ object AgGridStaticDemo {
         animateRows    = true,
         onGridReady    = onGridReady _,
         onCellClicked  = onCellClicked _,
-        getRowHeight   = getRowHeight _
+        getRowHeight   = getRowHeight _,
+        masterDetail   = true,
+        detailCellRendererParams = DetailCellRendererParams[Row](
+          detailGridOptions = dynamicProps,
+          getDetailRowData = getRowBlock _
+        ),
 //        onRowDragMove = onRowDragMove _
 //        onRowDragEnd = onRowDragEnd _
       )
@@ -202,10 +210,8 @@ object AgGridStaticDemo {
     def render(p: Props, s: State): VdomElement =
       <.div(
         <.div(^.cls := "ag-theme-balham", ^.height := "600px", ^.width := "1000px")(
-          AgGridReact(
-//            dynamicProps
-            staticProps
-          )
+            dynamicProps.render
+//          staticProps.render
         ),
         <.button(^.tpe := "button", ^.onClick --> scrollToRow(75), "Go to row 75"),
         s.selectedRowIdx.whenDefined(row => s"SELECTED ROW IDX: $row  "),
@@ -236,6 +242,7 @@ object AgGridDemo {
     .build
 
   def main(args: Array[String]): Unit = {
+    AgGridReact.EnableEnterprise
     component().renderIntoDOM(document.getElementById("root"))
     ()
   }
